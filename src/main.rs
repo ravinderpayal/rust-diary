@@ -10,6 +10,7 @@ use clap::{App, Arg};
 use config::ConfigManager;
 // use daemonize::Daemonize;
 use dirs;
+use iplocation::ipapi::get_ip_location;
 use setup::{add_auto_start_entry, SetupWizard};
 
 use storage::{local::LocalStorage, notion::NotionStorage};
@@ -115,7 +116,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // });
 
     // dbus_cr.serve(&dbus_connection)?;
-    let weather_service = match std::env::var("WEATHER_API_KEY") {
+    let mut weather_service = match std::env::var("WEATHER_API_KEY") {
         Ok(api_key) => Some(OpenWeatherService::new(&config.city, &api_key)),
         Err(_) => None,
     };
@@ -125,13 +126,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let today = now.date_naive();
         //  if now.hour() == 5 && now.minute() == 30 || now.hour() > 5 {
         if storage.get_entry(today).await?.is_none() {
+            let mut city = get_ip_location().await?;
+            if city.len() > 0 {
+                weather_service = match std::env::var("WEATHER_API_KEY") {
+        Ok(api_key) => Some(OpenWeatherService::new(&city, &api_key)),
+        Err(_) => None,
+    };
+            } else {
+                city = config.city;
+            }
+
+
             let weather = match &weather_service {
                 Some(s) => s.get_weather()?,
                 None => "API Not Configured".to_string(),
             };
             let content = format!(
-                    "🌆 City: {}\n🌤️ Weather: {}\n# Tasks for today\n- [ ] Eat Healthy\n- [ ] Workout\n- [ ] Talk to someone",
-                    config.city, weather
+                    "🌆 City: {}\n🌤️ Weather: {}\n# Tasks for today\n- [ ] Eat Healthy\n- [ ] Workout\n- [ ] Talk to someone", city, weather
                 );
             launch_editor(&storage, content).await?;
             tokio::time::sleep(tokio::time::Duration::from_secs(
