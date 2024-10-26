@@ -9,7 +9,7 @@ pub struct ConfigManager;
 
 impl ConfigManager {
     fn config_path() -> PathBuf {
-        let proj_dirs = ProjectDirs::from("com", "DiaryApp", "DiaryApp")
+        let proj_dirs = ProjectDirs::from("com", "ravinderpayal.os", "DiaryApp")
             .expect("Failed to get project directories");
         proj_dirs.config_dir().join("config.json")
     }
@@ -17,7 +17,7 @@ impl ConfigManager {
     pub fn load() -> Result<Option<Config>, Box<dyn Error>> {
         let config_path = Self::config_path();
         if config_path.exists() {
-            println!("Config path exists.");
+            println!("Config path exists: {}", config_path.to_str().unwrap());
             let config_str = fs::read_to_string(config_path)?;
             Ok(Some(serde_json::from_str(&config_str)?))
         } else {

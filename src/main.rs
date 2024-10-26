@@ -3,6 +3,7 @@ mod config;
 mod setup;
 mod storage;
 mod weather;
+mod iplocation;
 
 use chrono::Local;
 use clap::{App, Arg};
@@ -15,7 +16,6 @@ use storage::{local::LocalStorage, notion::NotionStorage};
 use weather::open_weather::OpenWeatherService;
 
 use diary_app::{Storage, StorageType};
-
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if matches.is_present("config") {
         let existing_config = ConfigManager::load().unwrap_or_else(|_| None);
-        let new_config = SetupWizard::run(existing_config.as_ref())?;
+        let new_config = SetupWizard::run(existing_config.as_ref()).await?;
         ConfigManager::save(&new_config)?;
         println!("Configuration updated successfully.");
         // return Ok(());
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         _ => {
             println!("Running Setup Wizard  :)");
-            let new_config = SetupWizard::run(None)?;
+            let new_config = SetupWizard::run(None).await?;
             ConfigManager::save(&new_config)?;
             new_config
         }

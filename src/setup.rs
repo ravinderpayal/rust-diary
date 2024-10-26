@@ -1,82 +1,27 @@
 // setup.rs
-
 use dialoguer::{Input, Select};
+use std::borrow::Borrow;
 use std::error::Error;
 // use std::fs;
 // use std::path::PathBuf;
 use chrono::NaiveTime;
 use diary_app::Config;
+
 use diary_app::StorageType;
+
+use super::iplocation::ipapi::get_ip_location;
+// use diary_app::iplocation::ipapi::get_api_location;
+
+use std::env;
 use tokio::fs;
 use tokio::process::Command;
-use std::env;
 
 use directories::BaseDirs;
-
-use diary_app::Storage;
 
 pub struct SetupWizard;
 
 impl SetupWizard {
-/*
-    pub fn run() -> Result<Config, Box<dyn Error>> {
-        println!("Welcome to the Diary App Setup Wizard!");
-
-        let storage_type = Select::new()
-            .with_prompt("Choose your preferred storage method")
-            .items(&["Local", "Notion", "Google Drive"])
-            .interact()?;
-
-        let storage_type = match storage_type {
-            0 => StorageType::Local,
-            1 => StorageType::Notion,
-            // 2 => StorageType::GoogleDrive,
-            _ => unreachable!(),
-        };
-
-        let city: String = Input::new()
-            .with_prompt("Enter your city (for weather information)")
-            .default("Gurugram, Hr".into())
-            .interact_text()?;
-
-        let mut config = Config {
-            storage_type,
-            city,
-            ..Config::new()
-        };
-
-        match config.storage_type {
-            StorageType::Notion => {
-                config.notion_token = Some(
-                    Input::new()
-                        .with_prompt("Enter your Notion API token")
-                        .interact_text()?,
-                );
-                config.notion_database_id = Some(
-                    Input::new()
-                        .with_prompt("Enter your Notion database ID")
-                        .interact_text()?,
-                );
-            }
-            /* StorageType::GoogleDrive => {
-                println!("To set up Google Drive, please follow these steps:");
-                println!("1. Go to https://developers.google.com/drive/api/v3/quickstart/python");
-                println!("2. Click 'Enable the Drive API'");
-                println!("3. Download the configuration file");
-                println!("4. Copy the content of the file and paste it here:");
-                
-                config.google_drive_token = Some(Input::new().interact_text()?);
-            }*/
-            StorageType::Local => {
-                // No additional setup needed for local storage
-            }
-        }
-
-        Ok(config)
-    }
-*/
-
-   pub fn run(current_config: Option<&Config>) -> Result<Config, Box<dyn Error>> {
+    pub async fn run(current_config: Option<&Config>) -> Result<Config, Box<dyn Error>> {
         println!("Diary App Setup Wizard");
 
         let mut config = current_config.cloned().unwrap_or_else(Config::new);
@@ -86,19 +31,38 @@ impl SetupWizard {
             println!("Storage: {:?}", current.storage_type);
             println!("City: {}", current.city);
             println!("Day starts at: {}", current.day_start_time);
-            println!("Editor frequency: {} minutes", current.editor_frequency_minutes);
+            println!(
+                "Editor frequency: {} minutes",
+                current.editor_frequency_minutes
+            );
             println!("\nPress Enter to keep current value, or input a new value.");
         }
 
         config.storage_type = Self::prompt_storage_type(current_config.map(|c| &c.storage_type))?;
-        config.city = Self::prompt_string("City", current_config.map(|c| &c.city))?;
-        config.day_start_time = Self::prompt_time("Day start time (HH:MM)", current_config.map(|c| &c.day_start_time))?;
-        config.editor_frequency_minutes = Self::prompt_u32("Editor frequency (minutes)", current_config.map(|c| &c.editor_frequency_minutes))?;
+        let ip_location = get_ip_location().await?;
+        let city_default_setting = current_config
+            .filter(|c| c.city.len() > 0)
+            .map_or(&ip_location, |c| &c.city);
+        config.city = Self::prompt_string("City", Some(city_default_setting))?;
+        config.day_start_time = Self::prompt_time(
+            "Day start time (HH:MM)",
+            current_config.map(|c| &c.day_start_time),
+        )?;
+        config.editor_frequency_minutes = Self::prompt_u32(
+            "Editor frequency (minutes)",
+            current_config.map(|c| &c.editor_frequency_minutes),
+        )?;
 
         match config.storage_type {
             StorageType::Notion => {
-                config.notion_token = Some(Self::prompt_string("Notion API token", current_config.and_then(|c| c.notion_token.as_ref()))?);
-                config.notion_database_id = Some(Self::prompt_string("Notion database ID", current_config.and_then(|c| c.notion_database_id.as_ref()))?);
+                config.notion_token = Some(Self::prompt_string(
+                    "Notion API token",
+                    current_config.and_then(|c| c.notion_token.as_ref()),
+                )?);
+                config.notion_database_id = Some(Self::prompt_string(
+                    "Notion database ID",
+                    current_config.and_then(|c| c.notion_database_id.as_ref()),
+                )?);
             }
 
             /*StorageType::GoogleDrive => {
@@ -119,11 +83,13 @@ impl SetupWizard {
 
     fn prompt_storage_type(current: Option<&StorageType>) -> Result<StorageType, Box<dyn Error>> {
         let options = vec!["Local", "Notion", "Google Drive"];
-        let default = current.map(|s| match s {
-            StorageType::Local => 0,
-            StorageType::Notion => 1,
-            // StorageType::GoogleDrive => 2,
-        }).unwrap_or(0);
+        let default = current
+            .map(|s| match s {
+                StorageType::Local => 0,
+                StorageType::Notion => 1,
+                // StorageType::GoogleDrive => 2,
+            })
+            .unwrap_or(0);
 
         let selected = Select::new()
             .with_prompt("Choose your preferred storage method")
@@ -157,7 +123,11 @@ impl SetupWizard {
         loop {
             let input: String = Input::new()
                 .with_prompt(prompt)
-                .with_initial_text(current.map(|t| t.format("%H:%M").to_string()).unwrap_or_default())
+                .with_initial_text(
+                    current
+                        .map(|t| t.format("%H:%M").to_string())
+                        .unwrap_or_default(),
+                )
                 .allow_empty(true)
                 .interact_text()?;
 
@@ -193,9 +163,6 @@ impl SetupWizard {
         }
     }
 }
-
-
-
 
 pub async fn add_auto_start_entry() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(base_dirs) = BaseDirs::new() {
@@ -243,6 +210,3 @@ Comment="#,
     }
     Ok(())
 }
-
-
-
