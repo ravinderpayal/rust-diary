@@ -1,0 +1,48 @@
+[package]
+name = "diary_app"
+version = "0.1.0"
+edition = "2021"
+
+[package.metadata.freedesktop]
+name = "Diary App"
+id = "com.ravinderpayal.DiaryApp"
+
+# [[bin]]
+# name = "background"
+# path = "src/main.rs"
+
+# [[bin]]
+# name = "foreground"
+# path = "src/foreground_main.rs"
+
+
+[dependencies]
+chrono = "0.4"
+tokio = { version = "1.0", features = ["full", "rt-multi-thread"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+async-trait = "0.1"
+dialoguer = "0.10"
+directories = "4.0"
+tempfile = "3.2"
+google-drive3 = "5.0"
+hyper = "0.14"
+hyper-rustls = "0.24"
+yup-oauth2 = "8.3"
+notion = "0.6.0"
+openssl = { version = "0.10", features = ["vendored"] }
+dirs = "5.0.1"
+reqwest = { version = "0.12.8", features = ["json", "blocking"] }
+clap = "3.0"
+daemonize = "0.5"
+tracing = "0.1"
+thiserror = "1.0"
+
+uuid = "1.10.0"
+regex = "1.11.0"
+
+
+
+# Linux specific
+dbus = "0.9.7"
+dbus-crossroads = "0.5.2"

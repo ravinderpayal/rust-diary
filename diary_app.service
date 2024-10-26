@@ -1,0 +1,12 @@
+[Unit]
+Description=Diary Application
+After=network.target
+
+[Service]
+ExecStart=/path/to/your/diary_app
+Restart=always
+User=root
+# Add these lines:
+BusName=com.ravinderpayal.DiaryApp
+[Install]
+WantedBy=multi-user.target
