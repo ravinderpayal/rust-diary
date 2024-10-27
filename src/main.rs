@@ -133,7 +133,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(_) => None,
     };
             } else {
-                city = config.city;
+                city = config.city.clone();
             }
 
 
