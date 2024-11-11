@@ -15,7 +15,7 @@ pub trait Storage {
 pub enum StorageType {
     Local,
     Notion,
-   // GoogleDrive,
+    // GoogleDrive,
 }
 /*
 #[derive(Serialize, Deserialize, Clone, Debug)]

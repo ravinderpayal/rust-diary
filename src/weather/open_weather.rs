@@ -10,10 +10,7 @@ pub struct OpenWeatherService {
 
 impl OpenWeatherService {
     pub fn new(city: &str, api_key: &str) -> Self {
-        OpenWeatherService {
-            city: city.to_string(),
-            api_key: api_key.to_string(),
-        }
+        OpenWeatherService { city: city.to_string(), api_key: api_key.to_string() }
     }
 
     pub fn get_weather(&self) -> Result<String, Box<dyn std::error::Error>> {
@@ -25,8 +22,13 @@ impl OpenWeatherService {
         let response: Value = reqwest::blocking::get(&url)?.json()?;
 
         let temp = response["main"]["temp"].as_f64().unwrap_or(0.0);
-        let description = response["weather"][0]["description"].as_str().unwrap_or("N/A");
+        let description = response["weather"][0]["description"]
+            .as_str()
+            .unwrap_or("N/A");
 
-        Ok(format!("Temperature: {:.1}°C, Conditions: {}", temp, description))
+        Ok(format!(
+            "Temperature: {:.1}°C, Conditions: {}",
+            temp, description
+        ))
     }
 }

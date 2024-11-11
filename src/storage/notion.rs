@@ -121,56 +121,50 @@ impl NotionStorage {
         // todo : implement filter
         Ok(pages.results.get(0).map(|page| page.id.clone()))
     }
- 
-    async fn create_new_page(&self, content: &str, date: NaiveDate)  -> Result<(), Box<dyn Error>> {
-            // Update existing page
-            // let blocks = notion_to_blocks::string_to_blocks(content);
-            // self.client.update_block_children(&page_id, blocks).await?;
 
-            let title = date.format("%Y-%m-%d").to_string();
-            let properties = HashMap::from([(
-                "Name".to_string(),
-                models::properties::PropertyValue::Title {
-                    id: ids::PropertyId::from_str("title-asdadadadada")
-                        .expect("Title PropertyId, what might have went wrong lol?"),
-                    title: vec![models::text::RichText::Text {
-                        rich_text: models::text::RichTextCommon {
-                            plain_text: title.clone(),
-                            href: None,
-                            annotations: None,
-                        },
-                        text: models::text::Text {
-                            content: title.clone(),
-                            link: None,
-                        },
-                    }],
-                },
-            )]);
+    async fn create_new_page(&self, content: &str, date: NaiveDate) -> Result<(), Box<dyn Error>> {
+        // Update existing page
+        // let blocks = notion_to_blocks::string_to_blocks(content);
+        // self.client.update_block_children(&page_id, blocks).await?;
 
-            let page = models::PageCreateRequest {
-                parent: models::Parent::Database {
-                    database_id: self.database_id.clone()
-                },
-                properties: models::Properties { properties },
-                children: Some(
-                    content.to_notion_blocks(), // vec![get_notion_block_for_content(content.to_string())]
-                ),
-            };
+        let title = date.format("%Y-%m-%d").to_string();
+        let properties = HashMap::from([(
+            "Name".to_string(),
+            models::properties::PropertyValue::Title {
+                id: ids::PropertyId::from_str("title-asdadadadada")
+                    .expect("Title PropertyId, what might have went wrong lol?"),
+                title: vec![models::text::RichText::Text {
+                    rich_text: models::text::RichTextCommon {
+                        plain_text: title.clone(),
+                        href: None,
+                        annotations: None,
+                    },
+                    text: models::text::Text { content: title.clone(), link: None },
+                }],
+            },
+        )]);
 
-            let page_req = async move { self.client.create_page(page).await };
+        let page = models::PageCreateRequest {
+            parent: models::Parent::Database { database_id: self.database_id.clone() },
+            properties: models::Properties { properties },
+            children: Some(
+                content.to_notion_blocks(), // vec![get_notion_block_for_content(content.to_string())]
+            ),
+        };
 
-            let page_req_response = page_req.await;
-            match page_req_response {
-                Ok(_) => println!("Synced with notion"),
-                Err(err) => {
-                    println!("Sync failed {}", err);
-                },
-            };
-            // todo: Implement backup and sync if notion call fails
- 
+        let page_req = async move { self.client.create_page(page).await };
+
+        let page_req_response = page_req.await;
+        match page_req_response {
+            Ok(_) => println!("Synced with notion"),
+            Err(err) => {
+                println!("Sync failed {}", err);
+            }
+        };
+        // todo: Implement backup and sync if notion call fails
+
         return Ok(());
     }
-
 }
 
 #[async_trait(?Send)]
@@ -187,9 +181,17 @@ impl Storage for NotionStorage {
                     .map(|opt| opt.unwrap())
                     .collect();
 
-                println!("Deleting Existing Blocks(Count: {}) using page archive method in single hit", block_ids.len());
+                println!(
+                    "Deleting Existing Blocks(Count: {}) using page archive method in single hit",
+                    block_ids.len()
+                );
                 // delete_page
-                match delete_blocks(&self.api_token, vec![BlockId::from_str(page_id.to_string().as_ref()).unwrap()]).await {
+                match delete_blocks(
+                    &self.api_token,
+                    vec![BlockId::from_str(page_id.to_string().as_ref()).unwrap()],
+                )
+                .await
+                {
                     Err(er) => eprintln!(
                         "Delete Process failed somehow {}: {}",
                         &page_id.as_id(),
@@ -221,11 +223,11 @@ impl Storage for NotionStorage {
             };
         } else {
             self.create_new_page(content, date).await?;
-       }
+        }
         Ok(())
     }
 
-     async fn get_entry(&self, date: NaiveDate) -> Result<Option<String>, Box<dyn Error>> {
+    async fn get_entry(&self, date: NaiveDate) -> Result<Option<String>, Box<dyn Error>> {
         if let Ok(Some(page_id)) = self.find_page_for_date(date).await {
             if let Ok(blocks) = self.get_blocks_in_a_page(&page_id).await {
                 println!("Block found, converting to MD[GE]");
@@ -275,10 +277,7 @@ fn get_notion_block_for_content(content: String) -> models::block::CreateBlock {
                     href: None,
                     annotations: None,
                 },
-                text: models::text::Text {
-                    content: content.clone(),
-                    link: None,
-                },
+                text: models::text::Text { content: content.clone(), link: None },
             }],
         },
     }

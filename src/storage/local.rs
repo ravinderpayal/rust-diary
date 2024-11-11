@@ -1,13 +1,11 @@
 // storage/local.rs
 use async_trait::async_trait;
 use chrono::NaiveDate;
+use diary_app::Storage;
 use std::error::Error;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::PathBuf;
-use diary_app::Storage;
-
-
 
 pub struct LocalStorage {
     base_path: PathBuf,
@@ -42,7 +40,11 @@ impl Storage for LocalStorage {
         let mut entries: Vec<_> = fs::read_dir(&self.base_path)?
             .filter_map(Result::ok)
             .filter(|entry| {
-                entry.path().extension().map(|ext| ext == "md").unwrap_or(false)
+                entry
+                    .path()
+                    .extension()
+                    .map(|ext| ext == "md")
+                    .unwrap_or(false)
             })
             .collect();
 
