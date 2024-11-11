@@ -1,9 +1,9 @@
 // main.rs
 mod config;
+mod iplocation;
 mod setup;
 mod storage;
 mod weather;
-mod iplocation;
 
 use chrono::Local;
 use clap::{App, Arg};
@@ -129,13 +129,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut city = get_ip_location().await?;
             if city.len() > 0 {
                 weather_service = match std::env::var("WEATHER_API_KEY") {
-        Ok(api_key) => Some(OpenWeatherService::new(&city, &api_key)),
-        Err(_) => None,
-    };
+                    Ok(api_key) => Some(OpenWeatherService::new(&city, &api_key)),
+                    Err(_) => None,
+                };
             } else {
                 city = config.city.clone();
             }
-
 
             let weather = match &weather_service {
                 Some(s) => s.get_weather()?,
@@ -179,10 +178,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-
 async fn launch_editor(
     storage: &Box<dyn Storage>,
-    new_content: String
+    new_content: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let now = Local::now();
     let today = now.date_naive();
@@ -201,7 +199,8 @@ async fn launch_editor(
             .arg("vim")
             .arg(temp_file.path())
             .env("DISPLAY", ":0".to_string())
-            .status().expect("Failed to open vim for recoriding input");
+            .status()
+            .expect("Failed to open vim for recoriding input");
         /*std::process::Command::new("x-terminal-emulator")
         .arg("-e")
         .arg("vim")
@@ -214,5 +213,3 @@ async fn launch_editor(
     storage.save_entry(today, &updated_content).await?;
     Ok(())
 }
-
-

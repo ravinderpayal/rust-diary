@@ -18,12 +18,12 @@ impl ToMarkdown for Block {
             Block::Heading1 { heading_1, .. } => format!("# {}\n", text_to_markdown(heading_1)),
             Block::Heading2 { heading_2, .. } => format!("## {}\n", text_to_markdown(heading_2)),
             Block::Heading3 { heading_3, .. } => format!("### {}\n", text_to_markdown(heading_3)),
-            Block::BulletedListItem {
-                bulleted_list_item, ..
-            } => format!("- {}\n", paragraph_to_markdown(bulleted_list_item)),
-            Block::NumberedListItem {
-                numbered_list_item, ..
-            } => format!("1. {}\n", paragraph_to_markdown(numbered_list_item)),
+            Block::BulletedListItem { bulleted_list_item, .. } => {
+                format!("- {}\n", paragraph_to_markdown(bulleted_list_item))
+            }
+            Block::NumberedListItem { numbered_list_item, .. } => {
+                format!("1. {}\n", paragraph_to_markdown(numbered_list_item))
+            }
             Block::ToDo { to_do, .. } => todo_to_markdown(to_do),
             Block::Toggle { toggle, .. } => toggle_to_markdown(toggle),
             Block::Code { code, .. } => code_to_markdown(code),
@@ -218,10 +218,7 @@ fn create_rich_text(content: &str) -> RichText {
             href: None,
             annotations: None,
         },
-        text: text::Text {
-            content: content.to_string(),
-            link: None,
-        },
+        text: text::Text { content: content.to_string(), link: None },
     }
 }
 
@@ -229,15 +226,9 @@ fn create_heading(line: &str, level: u8) -> CreateBlock {
     let content = line.trim_start_matches(|c| c == '#' || c == ' ');
     let rich_text = vec![create_rich_text(content)];
     match level {
-        1 => CreateBlock::Heading1 {
-            heading_1: Text { rich_text },
-        },
-        2 => CreateBlock::Heading2 {
-            heading_2: Text { rich_text },
-        },
-        3 => CreateBlock::Heading3 {
-            heading_3: Text { rich_text },
-        },
+        1 => CreateBlock::Heading1 { heading_1: Text { rich_text } },
+        2 => CreateBlock::Heading2 { heading_2: Text { rich_text } },
+        3 => CreateBlock::Heading3 { heading_3: Text { rich_text } },
         _ => unreachable!(),
     }
 }
@@ -341,10 +332,7 @@ fn create_bookmark(line: &str) -> CreateBlock {
     if let Some(caps) = re.captures(line) {
         let url = caps.get(2).map_or("", |m| m.as_str());
         CreateBlock::Bookmark {
-            bookmark: BookmarkFields {
-                url: url.to_string(),
-                caption: vec![],
-            },
+            bookmark: BookmarkFields { url: url.to_string(), caption: vec![] },
         }
     } else {
         CreateBlock::Unsupported {}
@@ -353,11 +341,7 @@ fn create_bookmark(line: &str) -> CreateBlock {
 
 fn create_equation(line: &str) -> CreateBlock {
     let equation = line.trim().trim_matches('$');
-    CreateBlock::Equation {
-        equation: Equation {
-            expression: equation.to_string(),
-        },
-    }
+    CreateBlock::Equation { equation: Equation { expression: equation.to_string() } }
 }
 
 fn create_table(lines: &[&str]) -> (CreateBlock, usize) {
