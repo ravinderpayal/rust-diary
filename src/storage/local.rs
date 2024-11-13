@@ -1,13 +1,13 @@
 // storage/local.rs
 use async_trait::async_trait;
 use chrono::NaiveDate;
+use diary_app::Storage;
 use std::error::Error;
+use std::fmt::Debug;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::PathBuf;
-use diary_app::Storage;
-
-
+use tracing::debug;
 
 pub struct LocalStorage {
     base_path: PathBuf,
@@ -23,6 +23,10 @@ impl LocalStorage {
 impl Storage for LocalStorage {
     async fn save_entry(&self, date: NaiveDate, content: &str) -> Result<(), Box<dyn Error>> {
         let file_path = self.base_path.join(format!("{}.md", date));
+        // Create the directory if it does not exist(not created automatically in windows).
+        if let Some(parent) = file_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
         fs::write(file_path, content)?;
         Ok(())
     }
@@ -42,7 +46,11 @@ impl Storage for LocalStorage {
         let mut entries: Vec<_> = fs::read_dir(&self.base_path)?
             .filter_map(Result::ok)
             .filter(|entry| {
-                entry.path().extension().map(|ext| ext == "md").unwrap_or(false)
+                entry
+                    .path()
+                    .extension()
+                    .map(|ext| ext == "md")
+                    .unwrap_or(false)
             })
             .collect();
 
