@@ -1,11 +1,11 @@
-// setup.rs
-use dialoguer::{Input, Select};
-use std::borrow::Borrow;
-use std::error::Error;
 // use std::fs;
 // use std::path::PathBuf;
 use chrono::NaiveTime;
+// setup.rs
+use dialoguer::{Input, Select};
 use diary_app::Config;
+use std::borrow::Borrow;
+use std::error::Error;
 
 use diary_app::StorageType;
 
@@ -13,8 +13,11 @@ use super::iplocation::ipapi::get_ip_location;
 // use diary_app::iplocation::ipapi::get_api_location;
 
 use std::env;
+use std::io::empty;
 use tokio::fs;
 use tokio::process::Command;
+use winreg::enums::*;
+use winreg::RegKey;
 
 use directories::BaseDirs;
 
@@ -164,7 +167,34 @@ impl SetupWizard {
     }
 }
 
-pub async fn add_auto_start_entry() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn add_auto_start_entry() -> Result<(), Box<dyn Error>> {
+    if cfg!(windows) {
+        println!("Adding auto start entry for windows if not present.");
+        add_windows_auto_start_entry()
+    } else if cfg!(unix) {
+        add_unix_auto_start_entry().await
+    } else {
+        println!("Your operating system is not in support yet for this app.");
+        Ok(())
+    }
+}
+
+fn add_windows_auto_start_entry() -> Result<(), Box<dyn Error>> {
+    let entry_key = "da-desktop";
+
+    let mut exe_path = env::current_exe()?;
+    exe_path.set_extension(""); // Remove any extension like `.exe`
+
+    let hku = RegKey::predef(HKEY_CURRENT_USER);
+    let (key, _disp) = hku.create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Run")?;
+
+    key.set_value(&entry_key, &exe_path.to_str().unwrap())?;
+
+    println!("Application added to startup with entry {}.", &entry_key);
+    Ok(())
+}
+
+async fn add_unix_auto_start_entry() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(base_dirs) = BaseDirs::new() {
         let autostart_dir = base_dirs.config_dir().join("autostart");
         std::fs::create_dir_all(&autostart_dir)?;

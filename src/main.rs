@@ -1,9 +1,9 @@
 // main.rs
 mod config;
+mod iplocation;
 mod setup;
 mod storage;
 mod weather;
-mod iplocation;
 
 use chrono::Local;
 use clap::{App, Arg};
@@ -11,7 +11,9 @@ use config::ConfigManager;
 // use daemonize::Daemonize;
 use dirs;
 use iplocation::ipapi::get_ip_location;
+use openssl::version::dir;
 use setup::{add_auto_start_entry, SetupWizard};
+use tracing::debug;
 
 use storage::{local::LocalStorage, notion::NotionStorage};
 use weather::open_weather::OpenWeatherService;
@@ -93,11 +95,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => eprintln!("Error, {}", e),
     }*/
 
-    let weather_service = match std::env::var("WEATHER_API_KEY") {
-        Ok(api_key) => Some(OpenWeatherService::new(&config.city, &api_key)),
-        Err(_) => None,
-    };
-
     //
     // let dbus_connection = Connection::new_session()?;
     // let dbus_proxy = dbus_connection.with_proxy("org.example.DiaryApp", false, true, false);
@@ -129,13 +126,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut city = get_ip_location().await?;
             if city.len() > 0 {
                 weather_service = match std::env::var("WEATHER_API_KEY") {
-        Ok(api_key) => Some(OpenWeatherService::new(&city, &api_key)),
-        Err(_) => None,
-    };
+                    Ok(api_key) => Some(OpenWeatherService::new(&city, &api_key)),
+                    Err(_) => None,
+                };
             } else {
                 city = config.city.clone();
             }
-
 
             let weather = match &weather_service {
                 Some(s) => s.get_weather()?,
@@ -179,21 +175,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-
 async fn launch_editor(
     storage: &Box<dyn Storage>,
-    new_content: String
+    new_content: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let now = Local::now();
     let today = now.date_naive();
 
-    let temp_file = tempfile::NamedTempFile::new()?;
+    let mut temp_file = tempfile::NamedTempFile::new()?;
     std::fs::write(temp_file.path(), new_content)?;
+
+    // ensure data is properly saved to temp location before passing control to editor
+    temp_file.as_file().sync_all()?;
+
     // Open the default text editor
-    if cfg!(target_os = "windows") {
+    let exit_status = if cfg!(target_os = "windows") {
+        println!("Opening Notepad for Windows");
         std::process::Command::new("notepad")
             .arg(temp_file.path())
-            .status()?;
+            .status()
+            .expect("Notepad didn't closed successfully!");
     } else {
         println!("Opening editor for recording regular response");
         std::process::Command::new("x-terminal-emulator")
@@ -201,7 +202,8 @@ async fn launch_editor(
             .arg("vim")
             .arg(temp_file.path())
             .env("DISPLAY", ":0".to_string())
-            .status().expect("Failed to open vim for recoriding input");
+            .status()
+            .expect("Failed to open vim for recoriding input");
         /*std::process::Command::new("x-terminal-emulator")
         .arg("-e")
         .arg("vim")
@@ -214,5 +216,3 @@ async fn launch_editor(
     storage.save_entry(today, &updated_content).await?;
     Ok(())
 }
-
-
